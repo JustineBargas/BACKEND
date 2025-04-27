@@ -38,10 +38,10 @@ const storage = multer.diskStorage({
 const upload = multer({ storage: storage });
 
 const db = mysql.createConnection({
-  host: "localhost",
+  host: "mysql.railway.internal",
   user: "root",
-  password: "",
-  database: "clean_up_tracker",
+  password: "lGaSQsRAoqFYHfawGnSfUDgNEIUtXhON",
+  database: "railway",
 });
 
 db.connect((err) => {
