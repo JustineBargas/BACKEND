@@ -43,7 +43,7 @@ const db = mysql.createConnection({
   password: "PASSWORD_SECRET",
   database: "clean_up_tracker",
   ssl: {
-    ca: fs.readFileSync("C:\\Users\\baria\\Downloads"),
+    ca: fs.readFileSync(path.join(__dirname, 'cert', 'ca.pem')),  // Use path.join to reference the ca.pem file
     rejectUnauthorized: true
   }
 });
