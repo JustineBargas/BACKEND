@@ -40,9 +40,13 @@ const upload = multer({ storage: storage });
 const db = mysql.createConnection({
   host: "mysql-1d6ccb68-justinebarias111-62a0.l.aivencloud.com",
   user: "avnadmin",
-  password: "PASSWORD_SECRET",
+  password: "your_actual_password_here",
   database: "clean_up_tracker",
-  connectTimeout: 10000,
+  port: 17290, // Aiven's port
+  ssl: {
+    ca: fs.readFileSync("./certs/ca.pem") // path to the CA cert
+  },
+  connectTimeout: 10000
 });
 
 db.connect((err) => {
