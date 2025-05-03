@@ -42,6 +42,7 @@ const db = mysql.createConnection({
   user: "avnadmin",
   password: "PASSWORD_SECRET",
   database: "clean_up_tracker",
+  connectTimeout: 10000,
 });
 
 db.connect((err) => {
