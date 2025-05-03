@@ -41,7 +41,7 @@ const db = mysql.createConnection({
   host: "HOST",
   port: 17290,
   user: "USER",
-  password: "PASSWORD",
+  password: "PASS",
   database: "clean_up_tracker",
   ssl: {
     ca: fs.readFileSync(path.join(__dirname, 'cert', 'ca.pem')),  // Use path.join to reference the ca.pem file
