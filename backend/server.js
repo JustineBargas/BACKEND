@@ -42,7 +42,6 @@ const db = mysql.createConnection({
   user: "avnadmin",
   password: "your_actual_password_here",
   database: "clean_up_tracker",
-  port: 17290, // Aiven's port
   ssl: {
     ca: fs.readFileSync("./certs/ca.pem") // path to the CA cert
   },
