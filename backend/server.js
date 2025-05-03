@@ -41,7 +41,7 @@ const db = mysql.createConnection({
   host: "mysql-1d6ccb68-justinebarias111-62a0.l.aivencloud.com",
   port: 17290,
   user: "avnadmin",
-  password: process.env.DB_PASSWORD,  // Accessing password from the environment variable
+  password: "AVNS_yhqHxxoUxGs9vXtT3pO",  // Accessing password from the environment variable
   database: "clean_up_tracker",
   ssl: {
     ca: fs.readFileSync(path.join(__dirname, 'cert', 'ca.pem')), 
