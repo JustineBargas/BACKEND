@@ -38,9 +38,9 @@ const storage = multer.diskStorage({
 const upload = multer({ storage: storage });
 
 const db = mysql.createConnection({
-  host: "localhost",
-  user: "root",
-  password: "",
+  host: "mysql-1d6ccb68-justinebarias111-62a0.l.aivencloud.com",
+  user: "avnadmin",
+  password: "PASSWORD_SECRET",
   database: "clean_up_tracker",
 });
 
