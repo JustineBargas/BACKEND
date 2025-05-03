@@ -41,10 +41,10 @@ const db = mysql.createConnection({
   host: "mysql-1d6ccb68-justinebarias111-62a0.l.aivencloud.com",
   port: 17290,
   user: "avnadmin",
-  password: PASS,
+  password: process.env.PASS,  // Accessing password from the environment variable
   database: "clean_up_tracker",
   ssl: {
-    ca: fs.readFileSync(path.join(__dirname, 'cert', 'ca.pem')),  // Use path.join to reference the ca.pem file
+    ca: fs.readFileSync(path.join(__dirname, 'cert', 'ca.pem')), 
     rejectUnauthorized: true
   }
 });
