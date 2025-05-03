@@ -405,5 +405,7 @@ app.post("/api/reports", upload.array("images"), (req, res) => { //corrected the
   });
 })
 
-const PORT = 17290;
-server.listen(PORT, () => console.log(`🚀 Backend running at http://192.168.1.17:${PORT}`));
+const PORT = process.env.PORT || 5000;
+server.listen(PORT, '0.0.0.0', () => {
+  console.log(`🚀 Backend running on port ${PORT}`);
+});
