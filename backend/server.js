@@ -38,10 +38,10 @@ const storage = multer.diskStorage({
 const upload = multer({ storage: storage });
 
 const db = mysql.createConnection({
-  host: process.env.HOST,
+  host: "mysql-1d6ccb68-justinebarias111-62a0.l.aivencloud.com",
   port: 17290,
-  user: process.env.USER,
-  password: process.env.PASS,
+  user: "avnadmin",
+  password: PASS,
   database: "clean_up_tracker",
   ssl: {
     ca: fs.readFileSync(path.join(__dirname, 'cert', 'ca.pem')),  // Use path.join to reference the ca.pem file
