@@ -41,8 +41,7 @@ const db = mysql.createConnection({
   host: "mysql-1d6ccb68-justinebarias111-62a0.l.aivencloud.com",
   user: "avnadmin",
   password: "your_actual_password_here",
-  database: "clean_up_tracker",
-  connectTimeout: 10000
+  database: "clean_up_tracker"
 });
 
 db.connect((err) => {
