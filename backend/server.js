@@ -40,7 +40,7 @@ const upload = multer({ storage: storage });
 const db = mysql.createConnection({
   host: "mysql-1d6ccb68-justinebarias111-62a0.l.aivencloud.com",
   user: "avnadmin",
-  password: "your_actual_password_here",
+  password: "SECRET_PASSWORD",
   database: "clean_up_tracker"
 });
 
