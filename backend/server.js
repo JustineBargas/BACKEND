@@ -46,8 +46,6 @@ const db = mysql.createConnection({
     ca: fs.readFileSync("C:\\Users\\baria\\Downloads\\ca.pem"),
     rejectUnauthorized: true
   }
-}
-
 });
 
 db.connect((err) => {
