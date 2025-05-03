@@ -41,7 +41,13 @@ const db = mysql.createConnection({
   host: "mysql-1d6ccb68-justinebarias111-62a0.l.aivencloud.com",
   user: "avnadmin",
   password: "PASSWORD_SECRET",
-  database: "clean_up_tracker"
+  database: "clean_up_tracker",
+  ssl: {
+    ca: fs.readFileSync(""C:\Users\baria\Downloads\ca.pem""),  // Replace with your actual file path
+    rejectUnauthorized: true
+  }
+}
+
 });
 
 db.connect((err) => {
