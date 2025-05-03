@@ -38,10 +38,14 @@ const storage = multer.diskStorage({
 const upload = multer({ storage: storage });
 
 const db = mysql.createConnection({
-  host: "localhost",
-  user: "root",
-  password: "",
+  host: "mysql-1d6ccb68-justinebarias111-62a0.l.aivencloud.com",
+  user: "avnadmin",
+  password: "PASSWORD_SECRET",
   database: "clean_up_tracker",
+  ssl: {
+    ca: fs.readFileSync("C:\\Users\\baria\\Downloads"),
+    rejectUnauthorized: true
+  }
 });
 
 db.connect((err) => {
@@ -400,5 +404,7 @@ app.post("/api/reports", upload.array("images"), (req, res) => { //corrected the
   });
 })
 
-const PORT = 5000;
-server.listen(PORT, () => console.log(`🚀 Backend running at http://192.168.1.17:${PORT}`));
+const PORT = process.env.PORT || 5000;
+server.listen(PORT, '0.0.0.0', () => {
+  console.log(`🚀 Backend running on port ${PORT}`);
+});
