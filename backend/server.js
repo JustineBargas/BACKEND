@@ -43,7 +43,7 @@ const db = mysql.createConnection({
   password: "PASSWORD_SECRET",
   database: "clean_up_tracker",
   ssl: {
-    ca: fs.readFileSync("C:\\Users\\baria\\Downloads\\ca.pem"),
+    ca: fs.readFileSync("C:\\Users\\baria\\Downloads"),
     rejectUnauthorized: true
   }
 });
