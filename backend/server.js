@@ -540,30 +540,27 @@ app.get('/api/admin/report-details', async (req, res) => {
     const [rows] = await db.promise().query(`
       SELECT
         r.report_id,
-        r.user,
-        u.fullName AS full_name,
+        u.fullName   AS full_name,
         r.latitude,
         r.longitude,
         r.description,
         r.timestamp,
-        ri.image_path
+        nl.image_path
       FROM reports r
-      LEFT JOIN users u ON u.user_id = r.user
-      LEFT JOIN report_images ri ON ri.report_id = r.report_id
+      LEFT JOIN users       u  ON u.user_id    = r.user
+      LEFT JOIN NOBRIDGE_LOG nl ON nl.report_id = r.report_id
     `);
 
-    // Group by report_id
     const reports = rows.reduce((acc, r) => {
       if (!acc[r.report_id]) {
         acc[r.report_id] = {
-          report_id: r.report_id,
-          user: r.user,
-          full_name: r.full_name || 'Unknown User',
-          latitude: r.latitude,
-          longitude: r.longitude,
-          description: r.description,
-          timestamp: r.timestamp,
-          images: []
+          report_id:  r.report_id,
+          full_name:  r.full_name  || 'Unknown User',
+          latitude:   r.latitude,
+          longitude:  r.longitude,
+          description:r.description,
+          timestamp:  r.timestamp,
+          images:     []
         };
       }
       if (r.image_path) {
