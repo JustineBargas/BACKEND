@@ -14,7 +14,11 @@ const app = express();
 const server = http.createServer(app);
 const io = socketIo(server, { cors: { origin: "*" } });
 
-app.use(cors());
+app.use(cors({
+  origin: ['http://localhost:3000', 'https://your-render-url.com'],
+  methods: ['GET', 'POST'],
+  credentials: true,
+}));
 app.use(bodyParser.json());
 app.use(express.static("uploads"));
 // at the top of server.js
