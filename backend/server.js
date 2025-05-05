@@ -52,7 +52,7 @@ const db = mysql.createConnection({
     port: 17290,
     user: "avnadmin",
     password: process.env.DB_PASSWORD,  // Accessing password from the environment variable
-    database: "clean_up_tracker",
+    database: "cleanup_tracker",
     ssl: {
       ca: fs.readFileSync(path.join(__dirname, 'cert', 'ca.pem')),
       rejectUnauthorized: true
