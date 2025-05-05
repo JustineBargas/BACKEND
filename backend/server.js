@@ -526,27 +526,30 @@ app.post("/api/reports", upload.array("images"), async (req, res) => {
 });
 
 app.get('/api/recent-report-images', async (req, res) => {
-  const { limit = 5 } = req.query; // Get the limit from the query, default to 5
+  const { limit = 5 } = req.query;
 
   try {
-    // 1. Validate the limit (ensure it's a number and within a reasonable range)
+    // Validate the limit
     const parsedLimit = parseInt(limit, 10);
-    if (isNaN(parsedLimit) || parsedLimit <= 0 || parsedLimit > 20) { // Example max limit of 20
+    if (isNaN(parsedLimit) || parsedLimit <= 0 || parsedLimit > 20) {
       return res.status(400).json({ error: 'Invalid limit parameter. Must be a number between 1 and 20.' });
     }
 
-    // 2. Fetch the most recent images, ordered by the report creation date
-    const result = await pool.query(`
+    // Use a prepared statement to prevent SQL injection
+    const [rows] = await pool.execute(
+      `
       SELECT
         ri.image_path
       FROM
         report_images ri
-      JOIN reports r ON ri.report_id = r.id  -- Join to get report creation date
+      JOIN reports r ON ri.report_id = r.id
       ORDER BY r.created_at DESC
-      LIMIT $1
-    `, [parsedLimit]);
+      LIMIT ?
+      `,
+      [parsedLimit]
+    );
 
-    const imagePaths = result.rows.map(row => row.image_path);
+    const imagePaths = rows.map(row => row.image_path);
     res.json({ images: imagePaths });
   } catch (error) {
     console.error('Error fetching recent report images:', error);
