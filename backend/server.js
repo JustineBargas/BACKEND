@@ -33,20 +33,18 @@ app.use(cors({
 app.use(bodyParser.json());
 app.use(express.static("uploads"));
 // at the top of server.js
-app.use(
-  "/uploads",
-  express.static(path.join(__dirname, "uploads"))
-);
+app.use("/uploads", express.static(UPLOAD_DIR));
 
 
 // Set up storage for image uploads
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    const uploadDir = "uploads/";
-    if (!fs.existsSync(uploadDir)) {
-      fs.mkdirSync(uploadDir);
+    // ensure the folder exists
+    if (!fs.existsSync(UPLOAD_DIR)) {
+      fs.mkdirSync(UPLOAD_DIR, { recursive: true });
     }
-    cb(null, uploadDir);
+    // ← now using the *same* absolute path your static route serves
+    cb(null, UPLOAD_DIR);
   },
   filename: (req, file, cb) => {
     const uniqueName = `${Date.now()}-${file.originalname}`;
@@ -54,9 +52,7 @@ const storage = multer.diskStorage({
   },
 });
 
-// Initialize multer
-//dependency to install =  "npm install multer"
-const upload = multer({ storage: storage });
+const upload = multer({ storage });
 
 const db = mysql.createConnection({
     host: process.env.DB_HOST,
