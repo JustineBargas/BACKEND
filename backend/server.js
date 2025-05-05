@@ -54,17 +54,18 @@ const storage = multer.diskStorage({
 
 const upload = multer({ storage });
 
-const db = mysql.createConnection({
-    host: process.env.DB_HOST,
-    port: 17290,
-    user: "avnadmin",
-    password: process.env.DB_PASSWORD,  // Accessing password from the environment variable
-    database: "cleanup_tracker",
-    ssl: {
-      ca: fs.readFileSync(path.join(__dirname, 'cert', 'ca.pem')),
-      rejectUnauthorized: true
-    }
-  });
+const pool = mysql.createPool({
+  host: process.env.DB_HOST,
+  user: 'avnadmin',
+  password: process.env.DB_PASSWORD,
+  database: 'cleanup_tracker',
+  connectionLimit: 10, // Adjust as needed
+  port: 17290,
+  ssl: {
+    ca: fs.readFileSync(path.join(__dirname, 'cert', 'ca.pem')),
+    rejectUnauthorized: true
+  }
+});
 
 db.connect((err) => {
   if (err) {
