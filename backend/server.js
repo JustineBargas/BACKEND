@@ -8,12 +8,11 @@ const http = require("http");
 const socketIo = require("socket.io");
 const multer = require("multer");
 const fs = require("fs");
+const path = require("path");
 
 const app = express();
 const server = http.createServer(app);
 const io = socketIo(server, { cors: { origin: "*" } });
-const path = require("path");
-const fs   = require("fs");
 
 const UPLOAD_DIR = path.join(__dirname, "uploads");
 console.log("🔹 [startup] will serve static from:", UPLOAD_DIR);
