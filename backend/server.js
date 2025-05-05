@@ -272,7 +272,7 @@ app.get('/api/admin/users', async (req, res) => {
   let sql = 'SELECT user_id, username, status FROM users';
 
   if (filter && filter !== 'All') {
-    sql += ` WHERE status = "${filter}"`;
+    sql += ` WHERE status = '${filter}'`;
   }
 
   console.log('API Request received with filter:', filter);
@@ -283,9 +283,9 @@ app.get('/api/admin/users', async (req, res) => {
     console.log('SQL Query Result (users):', users);
 
     const countQueries = {
-      approved: `SELECT COUNT(*) as count FROM users WHERE status = "approved" ${filter !== 'All' ? `AND status = "${filter}"` : ''}`,
-      pending: `SELECT COUNT(*) as count FROM users WHERE status = "pending" ${filter !== 'All' ? `AND status = "${filter}"` : ''}`,
-      restricted: `SELECT COUNT(*) as count FROM users WHERE status = "restricted" ${filter !== 'All' ? `AND status = "${filter}"` : ''}`,
+      approved: `SELECT COUNT(*) as count FROM users WHERE status = 'approved'`,
+      pending: `SELECT COUNT(*) as count FROM users WHERE status = 'pending'`,
+      restricted: `SELECT COUNT(*) as count FROM users WHERE status = 'restricted'`,
     };
 
     const countResults = await Promise.all(
