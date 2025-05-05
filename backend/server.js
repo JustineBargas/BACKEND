@@ -8,7 +8,6 @@ const http = require("http");
 const socketIo = require("socket.io");
 const multer = require("multer");
 const fs = require("fs");
-const path = require("path");
 
 const app = express();
 const server = http.createServer(app);
