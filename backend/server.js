@@ -38,7 +38,7 @@ const storage = multer.diskStorage({
 const upload = multer({ storage: storage });
 
 const db = mysql.createConnection({
-  host: "mysql-1d6ccb68-justinebarias111-62a0.l.aivencloud.com",
+  host: process.env.DB_HOST,
   port: 17290,
   user: "avnadmin",
   password: process.env.DB_PASSWORD,  // Accessing password from the environment variable
