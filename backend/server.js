@@ -547,8 +547,9 @@ app.get('/api/users/:id', (req, res) => {
 });
 
 app.get('/api/admin/report-details', async (req, res) => {
-  try {
-    const [rows] = await db.promise().query(`
+  const [rows] = await db
+    .promise()
+    .query(`
       SELECT
         r.report_id,
         u.fullName   AS full_name,
@@ -556,35 +557,32 @@ app.get('/api/admin/report-details', async (req, res) => {
         r.longitude,
         r.description,
         r.timestamp,
-        nl.image_path
+        ri.image_path
       FROM reports r
-      LEFT JOIN users       u  ON u.user_id    = r.user
-      LEFT JOIN NOBRIDGE_LOG nl ON nl.report_id = r.report_id
+      LEFT JOIN users       u  ON u.user_id      = r.user
+      LEFT JOIN report_images ri ON ri.report_id = r.report_id
     `);
 
-    const reports = rows.reduce((acc, r) => {
-      if (!acc[r.report_id]) {
-        acc[r.report_id] = {
-          report_id:  r.report_id,
-          full_name:  r.full_name  || 'Unknown User',
-          latitude:   r.latitude,
-          longitude:  r.longitude,
-          description:r.description,
-          timestamp:  r.timestamp,
-          images:     []
-        };
-      }
-      if (r.image_path) {
-        acc[r.report_id].images.push(r.image_path);
-      }
-      return acc;
-    }, {});
+  // aggregate multiple rows per report into an images[] array
+  const reports = rows.reduce((acc, r) => {
+    if (!acc[r.report_id]) {
+      acc[r.report_id] = {
+        report_id:  r.report_id,
+        full_name:  r.full_name || 'Unknown User',
+        latitude:   r.latitude,
+        longitude:  r.longitude,
+        description:r.description,
+        timestamp:  r.timestamp,
+        images:     []
+      };
+    }
+    if (r.image_path) {
+      acc[r.report_id].images.push(r.image_path);
+    }
+    return acc;
+  }, {});
 
-    res.json(Object.values(reports));
-  } catch (err) {
-    console.error("Error fetching reports:", err);
-    res.status(500).json({ error: "Failed to fetch reports" });
-  }
+  res.json(Object.values(reports));
 });
 
 const PORT = process.env.PORT || 5000;
