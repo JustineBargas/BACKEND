@@ -414,7 +414,7 @@ app.put('/api/admin/users/:userId', async (req, res) => {
 
 app.get('/api/admin/recent-events', async (req, res) => {
   try {
-      const [recentEvents] = await db.promise().query('SELECT event_name, event_date FROM events ORDER BY created_at DESC LIMIT 5'); // Adjust the column name 'created_at' if needed
+      const [recentEvents] = await db.promise().query('SELECT event_name, event_date, created_at FROM events ORDER BY created_at DESC LIMIT 5'); // Adjust the column name 'created_at' if needed
       res.json(recentEvents);
   } catch (error) {
       console.error('Error fetching recent events from MySQL:', error);
