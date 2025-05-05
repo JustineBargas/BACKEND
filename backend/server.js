@@ -535,6 +535,49 @@ app.get('/api/users/:id', (req, res) => {
   });
 });
 
+app.get('/api/admin/report-details', async (req, res) => {
+  try {
+    const [rows] = await db.promise().query(`
+      SELECT
+        r.report_id,
+        r.user,
+        u.fullName AS full_name,
+        r.latitude,
+        r.longitude,
+        r.description,
+        r.timestamp,
+        ri.image_path
+      FROM reports r
+      LEFT JOIN users u ON u.user_id = r.user
+      LEFT JOIN report_images ri ON ri.report_id = r.report_id
+    `);
+
+    // Group by report_id
+    const reports = rows.reduce((acc, r) => {
+      if (!acc[r.report_id]) {
+        acc[r.report_id] = {
+          report_id: r.report_id,
+          user: r.user,
+          full_name: r.full_name || 'Unknown User',
+          latitude: r.latitude,
+          longitude: r.longitude,
+          description: r.description,
+          timestamp: r.timestamp,
+          images: []
+        };
+      }
+      if (r.image_path) {
+        acc[r.report_id].images.push(r.image_path);
+      }
+      return acc;
+    }, {});
+
+    res.json(Object.values(reports));
+  } catch (err) {
+    console.error("Error fetching reports:", err);
+    res.status(500).json({ error: "Failed to fetch reports" });
+  }
+});
 
 const PORT = process.env.PORT || 5000;
 server.listen(PORT, '0.0.0.0', () => {
