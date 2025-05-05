@@ -13,6 +13,19 @@ const path = require("path");
 const app = express();
 const server = http.createServer(app);
 const io = socketIo(server, { cors: { origin: "*" } });
+const path = require("path");
+const fs   = require("fs");
+
+const UPLOAD_DIR = path.join(__dirname, "uploads");
+console.log("🔹 [startup] will serve static from:", UPLOAD_DIR);
+
+// if it already exists, list its contents:
+if (fs.existsSync(UPLOAD_DIR)) {
+  console.log("🔹 [startup] uploads contains:", fs.readdirSync(UPLOAD_DIR));
+} else {
+  console.log("⚠️ [startup] uploads folder DOES NOT exist yet");
+}
+
 
 app.use(cors({
   origin: ['http://localhost:3000', 'https://your-render-url.com'],
