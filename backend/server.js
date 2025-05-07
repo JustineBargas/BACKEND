@@ -250,13 +250,14 @@ app.post("/addEvent", (req, res) => {
   });
 });
 
-app.get("/events", (req, res) => {
+app.get("/api/events", (req, res) => {
   const sql = "SELECT * FROM events ORDER BY event_date ASC";
   db.query(sql, (err, results) => {
     if (err) return res.status(500).json({ error: "Database error" });
     res.json(results);
   });
 });
+
 
 app.get("/events/:id", (req, res) => {
   const { id } = req.params;
