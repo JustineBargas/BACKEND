@@ -579,6 +579,40 @@ app.get('/api/admin/report-details', async (req, res) => {
   res.json(Object.values(reports));
 });
 
+// AFTER
+app.post("/api/reports", upload.array("images"), async (req, res) => {
+  try {
+    const { userId, latitude, longitude, description, address } = req.body;
+
+    const images = req.files;
+
+    // insert report row
+    const [result] = await db.promise().query(
+      `INSERT INTO reports (user, latitude, longitude, description, address, timestamp)
+       VALUES (?, ?, ?, ?, ?, NOW())`,
+      [userId, latitude, longitude, description, address]
+    );
+    
+    const reportId = result.insertId;
+
+    // prepare the image‐insert promises
+    const inserts = (images || []).map((image) =>
+      db.promise().query(
+        "INSERT INTO report_images (report_id, image_path) VALUES (?, ?)",
+        [reportId, image.filename]
+      )
+    );
+
+    // NOW you can await them
+    await Promise.all(inserts);
+
+    res.status(201).json({ message: "Report and images uploaded successfully!" });
+  } catch (err) {
+    console.error("Error creating report:", err);
+    res.status(500).json({ message: "Failed to create report" });
+  }
+});
+
 const PORT = process.env.PORT || 5000;
 server.listen(PORT, '0.0.0.0', () => {
   console.log(`🚀 Backend running on port ${PORT}`);
