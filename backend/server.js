@@ -614,6 +614,37 @@ app.post("/api/reports", upload.array("images"), async (req, res) => {
   }
 });
 
+// Endpoint to get user stats: total reports and joined events
+app.get('/api/user/stats/:userId', async (req, res) => {
+  const { userId } = req.params;
+
+  if (!userId) {
+    return res.status(400).json({ error: 'User ID is required.' });
+  }
+
+  try {
+    // Count reports by the user
+    const [reportCountResult] = await db.query(
+      'SELECT COUNT(*) AS reportCount FROM reports WHERE user = ?',
+      [userId]
+    );
+
+    // Count events the user has joined
+    const [eventCountResult] = await db.query(
+      'SELECT COUNT(*) AS eventCount FROM event_participants WHERE user_id = ?',
+      [userId]
+    );
+
+    res.json({
+      reportCount: reportCountResult[0].reportCount,
+      eventCount: eventCountResult[0].eventCount
+    });
+  } catch (error) {
+    console.error('Error fetching user stats:', error);
+    res.status(500).json({ error: 'Database error fetching user statistics' });
+  }
+});
+
 const PORT = process.env.PORT || 5000;
 server.listen(PORT, '0.0.0.0', () => {
   console.log(`🚀 Backend running on port ${PORT}`);
