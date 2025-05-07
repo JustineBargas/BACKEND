@@ -623,14 +623,13 @@ app.get('/api/user/stats/:userId', async (req, res) => {
   }
 
   try {
-    // Count reports by the user
-    const [reportCountResult] = await db.query(
+    // Use the pool.query method for database interaction
+    const [reportCountResult] = await pool.execute(
       'SELECT COUNT(*) AS reportCount FROM reports WHERE user = ?',
       [userId]
     );
 
-    // Count events the user has joined
-    const [eventCountResult] = await db.query(
+    const [eventCountResult] = await pool.execute(
       'SELECT COUNT(*) AS eventCount FROM event_participants WHERE user_id = ?',
       [userId]
     );
