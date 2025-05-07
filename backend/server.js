@@ -616,32 +616,32 @@ app.post("/api/reports", upload.array("images"), async (req, res) => {
 
 // Endpoint to get user stats: total reports and joined events
 app.get('/api/user/stats/:userId', async (req, res) => {
-  const { userId } = req.params;
-
-  if (!userId) {
-    return res.status(400).json({ error: 'User ID is required.' });
-  }
-
-  try {
-    // Use the pool.query method for database interaction
-    const [reportCountResult] = await pool.execute(
-      'SELECT COUNT(*) AS reportCount FROM reports WHERE user = ?',
-      [userId]
-    );
-
-    const [eventCountResult] = await pool.execute(
-      'SELECT COUNT(*) AS eventCount FROM event_participants WHERE user_id = ?',
-      [userId]
-    );
-
-    res.json({
-      reportCount: reportCountResult[0].reportCount,
-      eventCount: eventCountResult[0].eventCount
-    });
-  } catch (error) {
-    console.error('Error fetching user stats:', error);
-    res.status(500).json({ error: 'Database error fetching user statistics' });
-  }
+    const { userId } = req.params;
+ 
+    if (!userId) {
+      return res.status(400).json({ error: 'User ID is required.' });
+    }
+ 
+    try {
+      // Use db.promise().query for database interaction
+      const [reportCountResult] = await db.promise().query(
+        'SELECT COUNT(*) AS reportCount FROM reports WHERE user = ?',
+        [userId]
+      );
+ 
+      const [eventCountResult] = await db.promise().query(
+        'SELECT COUNT(*) AS eventCount FROM event_participants WHERE user_id = ?',
+        [userId]
+      );
+ 
+      res.json({
+        reportCount: reportCountResult[0].reportCount,
+        eventCount: eventCountResult[0].eventCount
+      });
+    } catch (error) {
+      console.error('Error fetching user stats:', error);
+      res.status(500).json({ error: 'Database error fetching user statistics' });
+    }
 });
 
 const PORT = process.env.PORT || 5000;
