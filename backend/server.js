@@ -699,11 +699,17 @@ app.post('/api/reports/:reportId/like', async (req, res) => {
       const { reportId } = req.params;
       const { reporterId, adminId } = req.body;
 
-      if (!mongoose.Types.ObjectId.isValid(reportId)) {
-          return res.status(400).json({ error: 'Invalid report ID' });
+      console.log(`Like request - ReportID: ${reportId}, ReporterID: ${reporterId}, AdminID: ${adminId}`);
+
+      if (!mongoose.Types.ObjectId.isValid(reportId) || 
+          !mongoose.Types.ObjectId.isValid(reporterId) || 
+          !mongoose.Types.ObjectId.isValid(adminId)) {
+          console.error('Invalid ID format');
+          return res.status(400).json({ error: 'Invalid ID format' });
       }
 
       if (!reporterId || !adminId) {
+          console.error('Missing required fields');
           return res.status(400).json({ error: 'Missing reporterId or adminId' });
       }
 
@@ -714,6 +720,7 @@ app.post('/api/reports/:reportId/like', async (req, res) => {
       });
 
       if (existingReport) {
+          console.log('User already liked this report');
           return res.status(400).json({ 
               error: 'You already liked this report',
               likes: existingReport.likes
@@ -731,11 +738,14 @@ app.post('/api/reports/:reportId/like', async (req, res) => {
       ).populate('userId', 'username');
 
       if (!report) {
+          console.error('Report not found');
           return res.status(404).json({ error: 'Report not found' });
       }
 
+      console.log('Report updated successfully:', report);
+
       // 4. Create notification (only if liker is not the report owner)
-      if (report.userId._id.toString() !== adminId) {
+      if (report.userId && report.userId._id.toString() !== adminId) {
           const notification = new Notification({
               userId: reporterId,
               message: `Your report "${report.title}" was liked!`,
@@ -748,6 +758,7 @@ app.post('/api/reports/:reportId/like', async (req, res) => {
               }
           });
           await notification.save();
+          console.log('Notification created');
       }
 
       res.json({ 
@@ -762,10 +773,16 @@ app.post('/api/reports/:reportId/like', async (req, res) => {
       if (error.name === 'CastError') {
           return res.status(400).json({ error: 'Invalid ID format' });
       }
+      if (error.name === 'ValidationError') {
+          return res.status(400).json({ error: error.message });
+      }
       
       res.status(500).json({ 
           error: 'Internal server error',
-          details: process.env.NODE_ENV === 'development' ? error.message : undefined
+          details: process.env.NODE_ENV === 'development' ? {
+              message: error.message,
+              stack: error.stack
+          } : undefined
       });
   }
 });
