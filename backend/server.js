@@ -28,9 +28,6 @@ app.use(
   express.static(path.join(__dirname, "uploads"))
 );
 
-// Add moment for date formatting
-const moment = require('moment');
-
 // Set up storage for image uploads
 const storage = multer.diskStorage({
     destination: (req, file, cb) => {
