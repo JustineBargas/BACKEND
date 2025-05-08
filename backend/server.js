@@ -250,8 +250,8 @@ app.post("/addEvent", upload.single('image'), (req, res) => {
   
       const insertSql = `INSERT INTO events 
         (event_name, description, event_date, event_time, location, 
-         add_details, created_by, image_url) 
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)`;
+         add_details, created_by) 
+        VALUES (?, ?, ?, ?, ?, ?, ?)`;
         
       db.query(insertSql, 
         [eventName, description, date, time, location, 
