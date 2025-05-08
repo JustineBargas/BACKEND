@@ -692,18 +692,17 @@ app.get('/api/test', (req, res) => {
 });
 
 
-// Like a report and notify user
-router.post('/:reportId/like', async (req, res) => {
+// Like a report
+app.post('/api/reports/:reportId/like', async (req, res) => {
   try {
       const { reportId } = req.params;
       const { reporterId, adminId } = req.body;
 
-      // 1. Update report with new like
       const report = await Report.findByIdAndUpdate(
           reportId,
           { 
               $inc: { likes: 1 },
-              $addToSet: { likedBy: adminId } // Track who liked it
+              $addToSet: { likedBy: adminId }
           },
           { new: true }
       ).populate('userId', 'username');
@@ -712,7 +711,6 @@ router.post('/:reportId/like', async (req, res) => {
           return res.status(404).json({ error: 'Report not found' });
       }
 
-      // 2. Create notification for report owner
       const notification = new Notification({
           userId: reporterId,
           message: `Your report "${report.title}" was liked by an admin!`,
@@ -726,9 +724,6 @@ router.post('/:reportId/like', async (req, res) => {
       });
       await notification.save();
 
-      // 3. Optionally send push notification here
-      // (Implementation depends on your push notification service)
-
       res.json({ 
           success: true,
           likes: report.likes
@@ -740,7 +735,7 @@ router.post('/:reportId/like', async (req, res) => {
 });
 
 // Get all reports for a specific user
-router.get('/user/:userId', async (req, res) => {
+app.get('/api/reports/user/:userId', async (req, res) => {
   try {
       const { userId } = req.params;
       
