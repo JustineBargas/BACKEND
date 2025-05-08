@@ -10,6 +10,8 @@ const multer = require("multer");
 const fs = require("fs");
 const path = require("path");
 const moment = require("moment");
+const Report = require('./models/Report');
+const Notification = require('./models/Notification');
 
 const app = express();
 const server = http.createServer(app);
