@@ -690,6 +690,71 @@ app.get('/api/events/recent', async (req, res) => {
 app.get('/api/test', (req, res) => {
   res.json({ message: "Backend is working!", timestamp: new Date() });
 });
+
+
+// Like a report and notify user
+router.post('/:reportId/like', async (req, res) => {
+  try {
+      const { reportId } = req.params;
+      const { reporterId, adminId } = req.body;
+
+      // 1. Update report with new like
+      const report = await Report.findByIdAndUpdate(
+          reportId,
+          { 
+              $inc: { likes: 1 },
+              $addToSet: { likedBy: adminId } // Track who liked it
+          },
+          { new: true }
+      ).populate('userId', 'username');
+
+      if (!report) {
+          return res.status(404).json({ error: 'Report not found' });
+      }
+
+      // 2. Create notification for report owner
+      const notification = new Notification({
+          userId: reporterId,
+          message: `Your report "${report.title}" was liked by an admin!`,
+          type: 'like',
+          reportId: reportId,
+          read: false,
+          metadata: {
+              adminId: adminId,
+              reportTitle: report.title
+          }
+      });
+      await notification.save();
+
+      // 3. Optionally send push notification here
+      // (Implementation depends on your push notification service)
+
+      res.json({ 
+          success: true,
+          likes: report.likes
+      });
+  } catch (error) {
+      console.error('Error liking report:', error);
+      res.status(500).json({ error: error.message });
+  }
+});
+
+// Get all reports for a specific user
+router.get('/user/:userId', async (req, res) => {
+  try {
+      const { userId } = req.params;
+      
+      const reports = await Report.find({ userId })
+          .sort({ createdAt: -1 })
+          .populate('likedBy', 'username profilePicture');
+          
+      res.json(reports);
+  } catch (error) {
+      res.status(500).json({ error: error.message });
+  }
+});
+
+
 const PORT = process.env.PORT || 5000;
 server.listen(PORT, '0.0.0.0', () => {
   console.log(`🚀 Backend running on port ${PORT}`);
