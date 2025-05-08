@@ -695,9 +695,32 @@ app.get('/api/test', (req, res) => {
 // Like a report
 app.post('/api/reports/:reportId/like', async (req, res) => {
   try {
+      // 1. Validate inputs
       const { reportId } = req.params;
       const { reporterId, adminId } = req.body;
 
+      if (!mongoose.Types.ObjectId.isValid(reportId)) {
+          return res.status(400).json({ error: 'Invalid report ID' });
+      }
+
+      if (!reporterId || !adminId) {
+          return res.status(400).json({ error: 'Missing reporterId or adminId' });
+      }
+
+      // 2. Check if user already liked this report
+      const existingReport = await Report.findOne({
+          _id: reportId,
+          likedBy: adminId
+      });
+
+      if (existingReport) {
+          return res.status(400).json({ 
+              error: 'You already liked this report',
+              likes: existingReport.likes
+          });
+      }
+
+      // 3. Update report
       const report = await Report.findByIdAndUpdate(
           reportId,
           { 
@@ -711,26 +734,39 @@ app.post('/api/reports/:reportId/like', async (req, res) => {
           return res.status(404).json({ error: 'Report not found' });
       }
 
-      const notification = new Notification({
-          userId: reporterId,
-          message: `Your report "${report.title}" was liked by an admin!`,
-          type: 'like',
-          reportId: reportId,
-          read: false,
-          metadata: {
-              adminId: adminId,
-              reportTitle: report.title
-          }
-      });
-      await notification.save();
+      // 4. Create notification (only if liker is not the report owner)
+      if (report.userId._id.toString() !== adminId) {
+          const notification = new Notification({
+              userId: reporterId,
+              message: `Your report "${report.title}" was liked!`,
+              type: 'like',
+              reportId: reportId,
+              read: false,
+              metadata: {
+                  adminId: adminId,
+                  reportTitle: report.title
+              }
+          });
+          await notification.save();
+      }
 
       res.json({ 
           success: true,
           likes: report.likes
       });
+
   } catch (error) {
       console.error('Error liking report:', error);
-      res.status(500).json({ error: error.message });
+      
+      // More specific error responses
+      if (error.name === 'CastError') {
+          return res.status(400).json({ error: 'Invalid ID format' });
+      }
+      
+      res.status(500).json({ 
+          error: 'Internal server error',
+          details: process.env.NODE_ENV === 'development' ? error.message : undefined
+      });
   }
 });
 
@@ -739,16 +775,29 @@ app.get('/api/reports/user/:userId', async (req, res) => {
   try {
       const { userId } = req.params;
       
+      if (!mongoose.Types.ObjectId.isValid(userId)) {
+          return res.status(400).json({ error: 'Invalid user ID' });
+      }
+
       const reports = await Report.find({ userId })
           .sort({ createdAt: -1 })
-          .populate('likedBy', 'username profilePicture');
+          .populate('likedBy', 'username profilePicture')
+          .populate('userId', 'username profilePicture');
           
       res.json(reports);
   } catch (error) {
-      res.status(500).json({ error: error.message });
+      console.error('Error fetching user reports:', error);
+      
+      if (error.name === 'CastError') {
+          return res.status(400).json({ error: 'Invalid ID format' });
+      }
+      
+      res.status(500).json({ 
+          error: 'Failed to fetch reports',
+          details: process.env.NODE_ENV === 'development' ? error.message : undefined
+      });
   }
 });
-
 
 const PORT = process.env.PORT || 5000;
 server.listen(PORT, '0.0.0.0', () => {
