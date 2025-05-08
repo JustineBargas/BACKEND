@@ -14,18 +14,37 @@ const app = express();
 const server = http.createServer(app);
 const io = socketIo(server, { cors: { origin: "*" } });
 
-app.use(cors());
+const UPLOAD_DIR = path.join(__dirname, "uploads");
+console.log("🔹 [startup] will serve static from:", UPLOAD_DIR);
+
+// if it already exists, list its contents:
+if (fs.existsSync(UPLOAD_DIR)) {
+  console.log("🔹 [startup] uploads contains:", fs.readdirSync(UPLOAD_DIR));
+} else {
+  console.log("⚠️ [startup] uploads folder DOES NOT exist yet");
+}
+
+
+app.use(cors({
+  origin: ['http://localhost:3000', 'https://your-render-url.com'],
+  methods: ['GET', 'POST'],
+  credentials: true,
+}));
 app.use(bodyParser.json());
 app.use(express.static("uploads"));
+// at the top of server.js
+app.use("/uploads", express.static(UPLOAD_DIR));
+
 
 // Set up storage for image uploads
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    const uploadDir = "uploads/";
-    if (!fs.existsSync(uploadDir)) {
-      fs.mkdirSync(uploadDir);
+    // ensure the folder exists
+    if (!fs.existsSync(UPLOAD_DIR)) {
+      fs.mkdirSync(UPLOAD_DIR, { recursive: true });
     }
-    cb(null, uploadDir);
+    // ← now using the *same* absolute path your static route serves
+    cb(null, UPLOAD_DIR);
   },
   filename: (req, file, cb) => {
     const uniqueName = `${Date.now()}-${file.originalname}`;
@@ -33,21 +52,19 @@ const storage = multer.diskStorage({
   },
 });
 
-// Initialize multer
-//dependency to install =  "npm install multer"
-const upload = multer({ storage: storage });
+const upload = multer({ storage });
 
 const db = mysql.createConnection({
-  host: process.env.DB_HOST,
-  port: 17290,
-  user: "avnadmin",
-  password: process.env.DB_PASSWORD,  // Accessing password from the environment variable
-  database: "clean_up_tracker",
-  ssl: {
-    ca: fs.readFileSync(path.join(__dirname, 'cert', 'ca.pem')), 
-    rejectUnauthorized: true
-  }
-});
+    host: process.env.DB_HOST,
+    port: 17290,
+    user: "avnadmin",
+    password: process.env.DB_PASSWORD,  // Accessing password from the environment variable
+    database: "cleanup_tracker",
+    ssl: {
+      ca: fs.readFileSync(path.join(__dirname, 'cert', 'ca.pem')),
+      rejectUnauthorized: true
+    }
+ });
 
 db.connect((err) => {
   if (err) {
@@ -108,28 +125,23 @@ app.post("/api/register", async (req, res) => {
   });
 });
 
-app.get("/api/admin/dashboard", (req, res) => {
-  const userCountSql = "SELECT COUNT(*) as userCount FROM users";
-  const eventCountSql = "SELECT COUNT(*) as eventCount FROM events";
-  const notificationCountSql = "SELECT COUNT(*) as notificationCount FROM notifications";
+app.get("/api/admin/dashboard", async (req, res) => {
+  try {
+      const [usersResult] = await db.promise().query("SELECT COUNT(*) AS totalUsers FROM users");
+      const [eventsResult] = await db.promise().query("SELECT COUNT(*) AS totalEvents FROM events");
+      const [approvalsResult] = await db.promise().query("SELECT COUNT(*) AS totalPending FROM users WHERE status = 'Pending'"); // Assuming 'Pending' is the status for pending approvals
+      const [reportsResult] = await db.promise().query("SELECT COUNT(*) AS totalReports FROM reports");
 
-  db.query(userCountSql, (err, userCountResult) => {
-    if (err) return res.status(500).json({ error: "Failed to fetch user count" });
-
-    db.query(eventCountSql, (err, eventCountResult) => {
-      if (err) return res.status(500).json({ error: "Failed to fetch event count" });
-
-      db.query(notificationCountSql, (err, notificationCountResult) => {
-        if (err) return res.status(500).json({ error: "Failed to fetch notification count" });
-
-        res.json({
-          userCount: userCountResult[0].userCount,
-          eventCount: eventCountResult[0].eventCount,
-          notificationCount: notificationCountResult[0].notificationCount,
-        });
+      res.json({
+          totalUsers: usersResult[0].totalUsers,
+          totalEvents: eventsResult[0].totalEvents,
+          pendingApprovals: approvalsResult[0].totalPending,
+          reports: reportsResult[0].totalReports,
       });
-    });
-  });
+  } catch (error) {
+      console.error("Error fetching dashboard data from MySQL:", error);
+      res.status(500).json({ error: "Failed to fetch dashboard data" });
+  }
 });
 
 let connectedUsers = {};
@@ -238,13 +250,14 @@ app.post("/addEvent", (req, res) => {
   });
 });
 
-app.get("/events", (req, res) => {
+app.get("/api/events", (req, res) => {
   const sql = "SELECT * FROM events ORDER BY event_date ASC";
   db.query(sql, (err, results) => {
     if (err) return res.status(500).json({ error: "Database error" });
     res.json(results);
   });
 });
+
 
 app.get("/events/:id", (req, res) => {
   const { id } = req.params;
@@ -267,7 +280,7 @@ app.get('/api/admin/users', async (req, res) => {
   let sql = 'SELECT user_id, username, status FROM users';
 
   if (filter && filter !== 'All') {
-    sql += ` WHERE status = "${filter}"`;
+    sql += ` WHERE status = '${filter}'`;
   }
 
   console.log('API Request received with filter:', filter);
@@ -278,9 +291,9 @@ app.get('/api/admin/users', async (req, res) => {
     console.log('SQL Query Result (users):', users);
 
     const countQueries = {
-      approved: `SELECT COUNT(*) as count FROM users WHERE status = "approved" ${filter !== 'All' ? `AND status = "${filter}"` : ''}`,
-      pending: `SELECT COUNT(*) as count FROM users WHERE status = "pending" ${filter !== 'All' ? `AND status = "${filter}"` : ''}`,
-      restricted: `SELECT COUNT(*) as count FROM users WHERE status = "restricted" ${filter !== 'All' ? `AND status = "${filter}"` : ''}`,
+      approved: `SELECT COUNT(*) as count FROM users WHERE status = 'approved'`,
+      pending: `SELECT COUNT(*) as count FROM users WHERE status = 'pending'`,
+      restricted: `SELECT COUNT(*) as count FROM users WHERE status = 'restricted'`,
     };
 
     const countResults = await Promise.all(
@@ -370,40 +383,266 @@ app.post('/joinEvent', async (req, res) => {
   }
 });
 
-// Report Submission Route
-app.post("/api/reports", upload.array("images"), (req, res) => { //corrected the route to /api/reports
-  const { userId, latitude, longitude, description } = req.body;
-  const images = req.files;
 
-  const reportQuery = "INSERT INTO reports (user, latitude, longitude, description, timestamp) VALUES (?, ?, ?, ?, NOW())";
 
-  db.query(reportQuery, [userId, latitude, longitude, description], (err, result) => {
-    if (err) {
-      console.error("Error creating report:", err);
-      return res.status(500).json({ message: "Failed to create report" });
+
+// Endpoint to update user status (e.g., Approve or reject)
+app.put('/api/admin/users/:userId', async (req, res) => {
+  const { userId } = req.params;
+  const { status } = req.body;
+
+  console.log(`Updating user ${userId} to status: ${status}`);
+
+  // Validate the status
+  if (!status || (status !== 'Approved' && status !== 'Restricted')) {
+    return res.status(400).json({ error: 'Invalid status provided.' });
+  }
+
+  try {
+    // Use a parameterized query to prevent SQL injection
+    const sql = 'UPDATE users SET status = ? WHERE user_id = ?';
+    const params = [status, userId];
+
+    const [result] = await db.promise().query(sql, params);
+
+    // Check if the user was found and updated
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ error: 'User not found or status not updated.' });
     }
 
+    res.json({ message: 'User status updated successfully.' });
+
+  } catch (err) {
+    // Handle database errors
+    console.error('Error updating user status:', err);
+    res.status(500).json({ error: 'Database error: ' + err.message });
+  }
+});
+
+
+app.get('/api/admin/recent-events', async (req, res) => {
+  try {
+      const [recentEvents] = await db.promise().query('SELECT event_name, event_date, created_at FROM events ORDER BY created_at DESC LIMIT 5'); // Adjust the column name 'created_at' if needed
+      res.json(recentEvents);
+  } catch (error) {
+      console.error('Error fetching recent events from MySQL:', error);
+      res.status(500).json({ error: 'Failed to fetch recent events' });
+  }
+});
+
+app.get('/api/admin/participants-per-event', async (req, res) => {
+  try {
+      const [participants] = await db.promise().query(`
+          SELECT e.event_name, COUNT(ep.user_id) AS participant_count
+          FROM events e
+          LEFT JOIN event_participants ep ON e.event_id = ep.event_id
+          GROUP BY e.event_name
+          ORDER BY participant_count DESC;  
+      `); // Adjust table and column names if necessary
+      res.json(participants);
+  } catch (error) {
+      console.error('Error fetching participants per event from MySQL:', error);
+      res.status(500).json({ error: 'Failed to fetch participants per event' });
+  }
+});
+
+app.get('/api/admin/report-details', async (req, res) => {
+  try {
+    const [rows] = await db.promise().query(`
+      SELECT
+        r.report_id,
+        r.user,
+        u.fullName   AS full_name,
+        r.latitude,
+        r.longitude,
+        r.description,
+        r.timestamp,
+        ri.image_path
+      FROM reports r
+      LEFT JOIN users         u  ON u.user_id        = r.user
+      LEFT JOIN report_images ri ON ri.report_id     = r.report_id
+    `);
+
+    // fold rows into one object per report_id
+    const reports = rows.reduce((acc, r) => {
+      if (!acc[r.report_id]) {
+        acc[r.report_id] = {
+          report_id:  r.report_id,
+          user:       r.user,
+          full_name:  r.full_name  || 'Unknown User',
+          latitude:   r.latitude,
+          longitude:  r.longitude,
+          description:r.description,
+          timestamp:  r.timestamp,
+          images:     []
+        };
+      }
+      if (r.image_path) {
+        acc[r.report_id].images.push(r.image_path);
+      }
+      return acc;
+    }, {});
+
+    res.json(Object.values(reports));
+  } catch (err) {
+    console.error("Error fetching reports:", err);
+    res.status(500).json({ error: "Failed to fetch reports" });
+  }
+});
+
+// AFTER
+app.post("/api/reports", upload.array("images"), async (req, res) => {
+  try {
+    const { userId, latitude, longitude, description } = req.body;
+    const images = req.files;
+
+    // insert report row
+    const [result] = await db.promise().query(
+      `INSERT INTO reports (user, latitude, longitude, description, timestamp)
+       VALUES (?, ?, ?, ?, NOW())`,
+      [userId, latitude, longitude, description]
+    );
     const reportId = result.insertId;
 
-    const imageQueries = images.map((image) => {
-      const imagePath = image.filename;
-      return new Promise((resolve, reject) => {
-        const imageQuery = "INSERT INTO report_images (report_id, image) VALUES (?, ?)";
-        db.query(imageQuery, [reportId, imagePath], (err) => {
-          if (err) reject(err);
-          else resolve();
-        });
-      });
-    });
+    // prepare the image‐insert promises
+    const inserts = (images || []).map((image) =>
+      db.promise().query(
+        "INSERT INTO report_images (report_id, image_path) VALUES (?, ?)",
+        [reportId, image.filename]
+      )
+    );
 
-    Promise.all(imageQueries)
-      .then(() => res.status(201).json({ message: "Report created successfully!" }))
-      .catch((err) => {
-        console.error("Error saving images:", err);
-        res.status(500).json({ message: "Failed to save images" });
-      });
+    // NOW you can await them
+    await Promise.all(inserts);
+
+    res.status(201).json({ message: "Report and images uploaded successfully!" });
+  } catch (err) {
+    console.error("Error creating report:", err);
+    res.status(500).json({ message: "Failed to create report" });
+  }
+});
+
+// GET user full name by ID
+app.get('/api/users/:id', (req, res) => {
+  const { id } = req.params;
+
+  const sql = "SELECT fullName FROM users WHERE user_id = ?";
+  db.query(sql, [id], (err, results) => {
+    if (err) {
+      console.error('Error fetching user fullName:', err);
+      return res.status(500).json({ error: 'Failed to fetch user fullName' });
+    }
+
+    if (results.length > 0) {
+      res.json(results[0]); // send { fullName: "Juan Dela Cruz" }
+    } else {
+      res.status(404).json({ error: 'User not found' });
+    }
   });
-})
+});
+
+app.get('/api/admin/report-details', async (req, res) => {
+  const [rows] = await db
+    .promise()
+    .query(`
+      SELECT
+        r.report_id,
+        u.fullName   AS full_name,
+        r.latitude,
+        r.longitude,
+        r.description,
+        r.timestamp,
+        ri.image_path
+      FROM reports r
+      LEFT JOIN users       u  ON u.user_id      = r.user
+      LEFT JOIN report_images ri ON ri.report_id = r.report_id
+    `);
+
+  // aggregate multiple rows per report into an images[] array
+  const reports = rows.reduce((acc, r) => {
+    if (!acc[r.report_id]) {
+      acc[r.report_id] = {
+        report_id:  r.report_id,
+        full_name:  r.full_name || 'Unknown User',
+        latitude:   r.latitude,
+        longitude:  r.longitude,
+        description:r.description,
+        timestamp:  r.timestamp,
+        images:     []
+      };
+    }
+    if (r.image_path) {
+      acc[r.report_id].images.push(r.image_path);
+    }
+    return acc;
+  }, {});
+
+  res.json(Object.values(reports));
+});
+
+// AFTER
+app.post("/api/reports", upload.array("images"), async (req, res) => {
+  try {
+    const { userId, latitude, longitude, description, address } = req.body;
+
+    const images = req.files;
+
+    // insert report row
+    const [result] = await db.promise().query(
+      `INSERT INTO reports (user, latitude, longitude, description, address, timestamp)
+       VALUES (?, ?, ?, ?, ?, NOW())`,
+      [userId, latitude, longitude, description, address]
+    );
+    
+    const reportId = result.insertId;
+
+    // prepare the image‐insert promises
+    const inserts = (images || []).map((image) =>
+      db.promise().query(
+        "INSERT INTO report_images (report_id, image_path) VALUES (?, ?)",
+        [reportId, image.filename]
+      )
+    );
+
+    // NOW you can await them
+    await Promise.all(inserts);
+
+    res.status(201).json({ message: "Report and images uploaded successfully!" });
+  } catch (err) {
+    console.error("Error creating report:", err);
+    res.status(500).json({ message: "Failed to create report" });
+  }
+});
+
+// Endpoint to get user stats: total reports and joined events
+app.get('/api/user/stats/:userId', async (req, res) => {
+    const { userId } = req.params;
+ 
+    if (!userId) {
+      return res.status(400).json({ error: 'User ID is required.' });
+    }
+ 
+    try {
+      // Use db.promise().query for database interaction
+      const [reportCountResult] = await db.promise().query(
+        'SELECT COUNT(*) AS reportCount FROM reports WHERE user = ?',
+        [userId]
+      );
+ 
+      const [eventCountResult] = await db.promise().query(
+        'SELECT COUNT(*) AS eventCount FROM event_participants WHERE user_id = ?',
+        [userId]
+      );
+ 
+      res.json({
+        reportCount: reportCountResult[0].reportCount,
+        eventCount: eventCountResult[0].eventCount
+      });
+    } catch (error) {
+      console.error('Error fetching user stats:', error);
+      res.status(500).json({ error: 'Database error fetching user statistics' });
+    }
+});
 
 const PORT = process.env.PORT || 5000;
 server.listen(PORT, '0.0.0.0', () => {
