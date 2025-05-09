@@ -614,6 +614,10 @@ app.post("/api/reports", upload.array("images"), async (req, res) => {
           const cloudinaryResult = await cloudinary.uploader.upload(image.path, {
             folder: "reports",
             use_filename: true,
+              transformation: [
+              { width: 800, height: 600, crop: "limit" }, // Resize images
+              { quality: "auto" } // Optimize quality
+            ]
           });
 
           await db.promise().query(
