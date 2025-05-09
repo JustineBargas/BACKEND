@@ -723,6 +723,56 @@ app.get('/api/events/recent', async (req, res) => {
     }
 });
 
+
+app.get('/api/user/reports', (req, res) => {
+  const userId = req.session?.userId || req.query.userId; // Retrieve user ID from session or query parameter
+
+  if (!userId) {
+    return res.status(401).json({ error: 'User not authenticated.' });
+  }
+
+  const sql = `
+    SELECT 
+      r.report_id,
+      r.latitude,
+      r.longitude,
+      r.description,
+      r.timestamp,
+      ri.image_path
+    FROM reports r
+    LEFT JOIN report_images ri ON r.report_id = ri.report_id
+    WHERE r.user = ?
+    ORDER BY r.timestamp DESC
+  `;
+
+  db.query(sql, [userId], (err, reports) => {
+    if (err) {
+      console.error('Error fetching user reports:', err);
+      return res.status(500).json({ error: 'Failed to fetch user reports.' });
+    }
+
+    // Group images by report_id
+    const groupedReports = reports.reduce((acc, report) => {
+      if (!acc[report.report_id]) {
+        acc[report.report_id] = {
+          report_id: report.report_id,
+          latitude: report.latitude,
+          longitude: report.longitude,
+          description: report.description,
+          timestamp: report.timestamp,
+          images: [],
+        };
+      }
+      if (report.image_url) {
+        acc[report.report_id].images.push(report.image_url); // Use Cloudinary URL
+      }
+      return acc;
+    }, {});
+
+    res.json(Object.values(groupedReports));
+  });
+});
+
 // Simple test endpoint
 app.get('/api/test', (req, res) => {
   res.json({ message: "Backend is working!", timestamp: new Date() });
