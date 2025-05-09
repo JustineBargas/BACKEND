@@ -414,54 +414,49 @@ app.post('/api/admin/users/:userId/status', async (req, res) => {
   }
 });
 app.post('/events/:eventId/join', async (req, res) => {
-    const { eventId } = req.params;
-    const userId = req.session?.userId || req.body?.userId;
-  
-    if (!userId) {
-      return res.status(401).json({ message: 'User not authenticated.' });
+  const { eventId } = req.params;
+  const userId = req.session?.userId || req.body?.userId;
+
+  if (!userId) {
+    return res.status(401).json({ message: 'User not authenticated.' });
+  }
+
+  try {
+    const connection = await db.promise();
+
+    // Check if the user is already participating in the event
+    const [existingParticipant] = await connection.execute(
+      `SELECT * FROM event_participants WHERE event_id = ? AND user_id = ?`,
+      [eventId, userId]
+    );
+
+    if (existingParticipant.length > 0) {
+      // Notify the user that they have already joined the event
+      return res.status(409).json({ message: 'You have already joined this event.' });
     }
-  
-    try {
-      const connection = await db.promise();
-  
-      // Check if the user is already participating in the event
-      const [existingParticipant] = await connection.execute(
-        `SELECT * FROM event_participants WHERE event_id = ? AND user_id = ?`,
-        [eventId, userId]
-      );
-  
-      if (existingParticipant.length > 0) {
-        return res.status(409).json({ message: 'User is already participating in this event.' });
-      }
-  
-      // Insert the new participant record
-      await connection.execute(
-        `INSERT INTO event_participants (event_id, user_id) VALUES (?, ?)`,
-        [eventId, userId]
-      );
-  
-      // Get the current participant count for the event.
-      const [participantCountResult] = await connection.execute(
-        `SELECT COUNT(*) as participantCount FROM event_participants WHERE event_id = ?`,
-        [eventId]
-      );
-      const participantCount = participantCountResult[0].participantCount;
-  
-      // Optionally, you might want to update an events table with the participant count
-      // await connection.execute(
-      //   `UPDATE events SET participant_count = ? WHERE id = ?`,
-      //   [participantCount, eventId]
-      // );
-  
-      res.status(201).json({
-        message: 'Successfully joined the event!',
-        participantCount: participantCount, // Return the participant count
-      });
-    } catch (error) {
-      console.error('Error joining event:', error);
-      res.status(500).json({ message: 'Failed to join the event.' });
-    }
-  });
+
+    // Insert the new participant record
+    await connection.execute(
+      `INSERT INTO event_participants (event_id, user_id) VALUES (?, ?)`,
+      [eventId, userId]
+    );
+
+    // Get the current participant count for the event
+    const [participantCountResult] = await connection.execute(
+      `SELECT COUNT(*) as participantCount FROM event_participants WHERE event_id = ?`,
+      [eventId]
+    );
+    const participantCount = participantCountResult[0].participantCount;
+
+    res.status(201).json({
+      message: 'Successfully joined the event!',
+      participantCount: participantCount, // Return the participant count
+    });
+  } catch (error) {
+    console.error('Error joining event:', error);
+    res.status(500).json({ message: 'Failed to join the event.' });
+  }
+});
   
   app.get('/events/:eventId/participants', async (req, res) => {
     const { eventId } = req.params;
