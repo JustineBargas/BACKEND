@@ -11,7 +11,6 @@ const multer = require("multer");
 const fs = require("fs");
 const path = require("path");
 const moment = require("moment");
-const cloudinary = require('cloudinary').v2;
 
 const app = express();
 const server = http.createServer(app);
@@ -57,12 +56,6 @@ const upload = multer({
       }
     }
   });
-
-cloudinary.config({ 
-    cloud_name: 'dgkzqmtgy', 
-    api_key: '138712578489821', 
-    api_secret: 't60XhGuihc92t01GZtNFpR7dXU0' // Click 'View API Keys' above to copy your API secret
-});
 
 const db = mysql.createConnection({
     host: process.env.DB_HOST,
@@ -590,65 +583,31 @@ app.post("/api/reports", upload.array("images"), async (req, res) => {
     const { userId, latitude, longitude, description } = req.body;
     const images = req.files;
 
-    if (!userId || !latitude || !longitude || !description) {
-      return res.status(400).json({ message: "Missing required fields" });
-    }
-
-    if (!images || images.length === 0) {
-      return res.status(400).json({ message: "No images uploaded" });
-    }
-
-    // Insert report (unchanged)
-    const [result] = await db.query(
+    // insert report row
+    const [result] = await db.promise().query(
       `INSERT INTO reports (user, latitude, longitude, description, timestamp)
        VALUES (?, ?, ?, ?, NOW())`,
       [userId, latitude, longitude, description]
     );
-
     const reportId = result.insertId;
 
-    // MODIFIED IMAGE HANDLING - Upload to Cloudinary instead of DB
-    const uploadedImages = await Promise.all(
-      images.map(async (image) => {
-        try {
-          // Upload to Cloudinary
-          const cloudinaryResult = await cloudinary.uploader.upload(image.path, {
-            folder: "reports",
-            use_filename: true
-          });
-          
-          // Store Cloudinary URL in database instead of image data
-          await db.query(
-            "INSERT INTO report_images (report_id, image_url) VALUES (?, ?)",
-            [reportId, cloudinaryResult.secure_url]
-          );
-          
-          // Delete temporary file
-          fs.unlinkSync(image.path);
-          
-          return cloudinaryResult.secure_url;
-        } catch (uploadError) {
-          console.error("Failed to upload image:", uploadError);
-          // Still store the report even if image upload fails
-          return null;
-        }
-      })
+    // prepare the image‐insert promises
+    const inserts = (images || []).map((image) =>
+      db.promise().query(
+        "INSERT INTO report_images (report_id, image_path) VALUES (?, ?)",
+        [reportId, image.filename]
+      )
     );
 
-    res.status(201).json({ 
-      message: "Report created and images uploaded successfully!",
-      imageUrls: uploadedImages.filter(url => url !== null)
-    });
-    
-  } catch (error) {
-    console.error("Error creating report:", error);
-    res.status(500).json({ 
-      message: "Failed to create report", 
-      error: error.message 
-    });
+    // NOW you can await them
+    await Promise.all(inserts);
+
+    res.status(201).json({ message: "Report and images uploaded successfully!" });
+  } catch (err) {
+    console.error("Error creating report:", err);
+    res.status(500).json({ message: "Failed to create report" });
   }
 });
-
 
 
 // GET user full name by ID
