@@ -61,6 +61,7 @@ cloudinary.config({
     cloud_name: 'dgkzqmtgy', 
     api_key: '138712578489821', 
     api_secret: 't60XhGuihc92t01GZtNFpR7dXU0' // Click 'View API Keys' above to copy your API secret
+    secure: true
 });
 
 const db = mysql.createConnection({
