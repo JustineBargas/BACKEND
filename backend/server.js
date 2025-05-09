@@ -724,7 +724,7 @@ app.get('/api/events/recent', async (req, res) => {
 
 
 app.get('/api/user/reports', (req, res) => {
-  const userId = req.session?.userId || req.query.userId; // Retrieve user ID from session or query parameter
+  const userId = req.session?.userId || req.query.userId;
 
   if (!userId) {
     return res.status(401).json({ error: 'User not authenticated.' });
@@ -737,7 +737,7 @@ app.get('/api/user/reports', (req, res) => {
       r.longitude,
       r.description,
       r.timestamp,
-      ri.image_path
+      ri.image_path as image_url  // Make sure this is the Cloudinary URL
     FROM reports r
     LEFT JOIN report_images ri ON r.report_id = ri.report_id
     WHERE r.user = ?
@@ -750,7 +750,6 @@ app.get('/api/user/reports', (req, res) => {
       return res.status(500).json({ error: 'Failed to fetch user reports.' });
     }
 
-    // Group images by report_id
     const groupedReports = reports.reduce((acc, report) => {
       if (!acc[report.report_id]) {
         acc[report.report_id] = {
@@ -763,7 +762,7 @@ app.get('/api/user/reports', (req, res) => {
         };
       }
       if (report.image_url) {
-        acc[report.report_id].images.push(report.image_url); // Use Cloudinary URL
+        acc[report.report_id].images.push(report.image_url);
       }
       return acc;
     }, {});
