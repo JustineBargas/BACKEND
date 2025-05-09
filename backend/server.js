@@ -1,4 +1,3 @@
-
 // server.js (Node.js with Express)
 const express = require("express");
 const mysql = require("mysql2");
@@ -585,87 +584,81 @@ app.get('/api/admin/report-details', async (req, res) => {
 });
 
 // Report endpoints
-app.post("/api/reports", upload.array("images"), async (req, res) => {
-  try {
-    const { userId, latitude, longitude, description } = req.body;
-    const images = req.files;
+app.post("/api/reports", upload.array("images"), (req, res) => {
+  const { userId, latitude, longitude, description } = req.body;
+  const images = req.files;
 
-    if (!userId || !latitude || !longitude || !description) {
-      return res.status(400).json({ message: "Missing required fields" });
-    }
-
-    if (!images || images.length === 0) {
-      return res.status(400).json({ message: "No images uploaded" });
-    }
-
-    // Insert report into database
-    db.query(
-      `INSERT INTO reports (user, latitude, longitude, description, timestamp)
-       VALUES (?, ?, ?, ?, NOW())`,
-      [userId, latitude, longitude, description],
-      async (error, result) => {
-        if (error) {
-          console.error("Database insert error:", error);
-          return res.status(500).json({ message: "Failed to create report" });
-        }
-
-        const reportId = result.insertId;
-
-        try {
-          // Upload images to Cloudinary and store URLs in database
-          const uploadedImages = await Promise.all(
-            images.map(async (image) => {
-              try {
-                // Upload to Cloudinary
-                const cloudinaryResult = await cloudinary.uploader.upload(image.path, {
-                  folder: "reports",
-                  use_filename: true
-                });
-                
-                // Store Cloudinary URL in database
-                db.query(
-                  `INSERT INTO report_images (report_id, image_url) VALUES (?, ?)`,
-                  [reportId, cloudinaryResult.secure_url],
-                  (error) => {
-                    if (error) {
-                      console.error("Failed to insert image URL:", error);
-                    }
-                  }
-                );
-
-                // Delete temporary file after upload
-                fs.unlinkSync(image.path);
-
-                return cloudinaryResult.secure_url;
-              } catch (uploadError) {
-                console.error("Failed to upload image:", uploadError);
-                return null;
-              }
-            })
-          );
-
-          res.status(201).json({ 
-            message: "Report created and images uploaded successfully!",
-            imageUrls: uploadedImages.filter(url => url !== null)
-          });
-
-        } catch (error) {
-          console.error("Error uploading images:", error);
-          res.status(500).json({ 
-            message: "Report created but failed to upload some images", 
-            error: error.message 
-          });
-        }
-      }
-    );
-
-  } catch (error) {
-    console.error("Error creating report:", error);
-    res.status(500).json({ 
-      message: "Failed to create report", 
-      error: error.message 
-    });
+  if (!userId || !latitude || !longitude || !description) {
+    return res.status(400).json({ message: "Missing required fields" });
   }
+
+  if (!images || images.length === 0) {
+    return res.status(400).json({ message: "No images uploaded" });
+  }
+
+  // Insert report into database
+  db.query(
+    `INSERT INTO reports (user, latitude, longitude, description, timestamp)
+     VALUES (?, ?, ?, ?, NOW())`,
+    [userId, latitude, longitude, description],
+    (error, result) => {
+      if (error) {
+        console.error("Database insert error:", error);
+        return res.status(500).json({ message: "Failed to create report" });
+      }
+
+      const reportId = result.insertId;
+
+      // Upload images to Cloudinary and store URLs in database
+      const uploadedImages = [];
+      let uploadErrors = false;
+
+      images.forEach((image, index) => {
+        cloudinary.uploader.upload(
+          image.path,
+          { folder: "reports", use_filename: true },
+          (uploadError, cloudinaryResult) => {
+            if (uploadError) {
+              console.error("Failed to upload image:", uploadError);
+              uploadErrors = true;
+              uploadedImages.push(null);
+            } else {
+              uploadedImages.push(cloudinaryResult.secure_url);
+
+              // Store Cloudinary URL in database
+              db.query(
+                `INSERT INTO report_images (report_id, image_url) VALUES (?, ?)`,
+                [reportId, cloudinaryResult.secure_url],
+                (insertError) => {
+                  if (insertError) {
+                    console.error("Failed to insert image URL:", insertError);
+                  }
+                }
+              );
+            }
+
+            // Delete temporary file after upload
+            fs.unlinkSync(image.path);
+
+            // Check if all images have been processed
+            if (index === images.length - 1) {
+              if (uploadErrors) {
+                return res.status(500).json({
+                  message: "Report created but failed to upload some images",
+                  imageUrls: uploadedImages.filter((url) => url !== null),
+                });
+              }
+
+              res.status(201).json({
+                message: "Report created and images uploaded successfully!",
+                imageUrls: uploadedImages,
+              });
+            }
+          }
+        );
+      });
+    }
+  );
 });
 
 // GET user full name by ID
