@@ -599,45 +599,65 @@ app.post("/api/reports", upload.array("images"), async (req, res) => {
     }
 
     // Insert report into database
-    const result = await db.query(
+    db.query(
       `INSERT INTO reports (user, latitude, longitude, description, timestamp)
        VALUES (?, ?, ?, ?, NOW())`,
-      [userId, latitude, longitude, description]
-    );
+      [userId, latitude, longitude, description],
+      async (error, result) => {
+        if (error) {
+          console.error("Database insert error:", error);
+          return res.status(500).json({ message: "Failed to create report" });
+        }
 
-    const reportId = result.insertId;
+        const reportId = result.insertId;
 
-    // Upload images to Cloudinary and store URLs in database
-    const uploadedImages = await Promise.all(
-      images.map(async (image) => {
         try {
-          // Upload to Cloudinary
-          const cloudinaryResult = await cloudinary.uploader.upload(image.path, {
-            folder: "reports",
-            use_filename: true
-          });
-          
-          // Store Cloudinary URL in database
-          await db.query(
-            `INSERT INTO report_images (report_id, image_url) VALUES (?, ?)`,
-            [reportId, cloudinaryResult.secure_url]
+          // Upload images to Cloudinary and store URLs in database
+          const uploadedImages = await Promise.all(
+            images.map(async (image) => {
+              try {
+                // Upload to Cloudinary
+                const cloudinaryResult = await cloudinary.uploader.upload(image.path, {
+                  folder: "reports",
+                  use_filename: true
+                });
+                
+                // Store Cloudinary URL in database
+                db.query(
+                  `INSERT INTO report_images (report_id, image_url) VALUES (?, ?)`,
+                  [reportId, cloudinaryResult.secure_url],
+                  (error) => {
+                    if (error) {
+                      console.error("Failed to insert image URL:", error);
+                    }
+                  }
+                );
+
+                // Delete temporary file after upload
+                fs.unlinkSync(image.path);
+
+                return cloudinaryResult.secure_url;
+              } catch (uploadError) {
+                console.error("Failed to upload image:", uploadError);
+                return null;
+              }
+            })
           );
 
-          // Delete temporary file after upload
-          fs.unlinkSync(image.path);
+          res.status(201).json({ 
+            message: "Report created and images uploaded successfully!",
+            imageUrls: uploadedImages.filter(url => url !== null)
+          });
 
-          return cloudinaryResult.secure_url;
-        } catch (uploadError) {
-          console.error("Failed to upload image:", uploadError);
-          return null;
+        } catch (error) {
+          console.error("Error uploading images:", error);
+          res.status(500).json({ 
+            message: "Report created but failed to upload some images", 
+            error: error.message 
+          });
         }
-      })
+      }
     );
-
-    res.status(201).json({ 
-      message: "Report created and images uploaded successfully!",
-      imageUrls: uploadedImages.filter(url => url !== null)
-    });
 
   } catch (error) {
     console.error("Error creating report:", error);
