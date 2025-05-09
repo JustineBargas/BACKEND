@@ -1,3 +1,4 @@
+
 // server.js (Node.js with Express)
 const express = require("express");
 const mysql = require("mysql2");
@@ -10,6 +11,7 @@ const multer = require("multer");
 const fs = require("fs");
 const path = require("path");
 const moment = require("moment");
+const cloudinary = require('cloudinary').v2;
 
 const app = express();
 const server = http.createServer(app);
