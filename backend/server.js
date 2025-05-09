@@ -58,6 +58,12 @@ const upload = multer({
     }
   });
 
+cloudinary.config({ 
+    cloud_name: 'dgkzqmtgy', 
+    api_key: '138712578489821', 
+    api_secret: 't60XhGuihc92t01GZtNFpR7dXU0' // Click 'View API Keys' above to copy your API secret
+});
+
 const db = mysql.createConnection({
     host: process.env.DB_HOST,
     port: 17290,
