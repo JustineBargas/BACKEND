@@ -103,7 +103,7 @@ app.post("/api/login", async (req, res) => {
 
     // Check if the user's status is "Pending"
     if (status === "Pending") {
-      return res.status(403).json({ error: "Your account is not approved by the admin." });
+      return res.status(403).json({ error: "Your account is pending approval." });
     }
 
     const passwordMatch = await bcrypt.compare(password, hashedPassword);
