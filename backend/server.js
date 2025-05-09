@@ -598,8 +598,8 @@ app.post("/api/reports", upload.array("images"), async (req, res) => {
       return res.status(400).json({ message: "No images uploaded" });
     }
 
-    // Insert report (unchanged)
-    const [result] = await db.query(
+    // Insert report into database
+    const result = await db.query(
       `INSERT INTO reports (user, latitude, longitude, description, timestamp)
        VALUES (?, ?, ?, ?, NOW())`,
       [userId, latitude, longitude, description]
@@ -607,7 +607,7 @@ app.post("/api/reports", upload.array("images"), async (req, res) => {
 
     const reportId = result.insertId;
 
-    // MODIFIED IMAGE HANDLING - Upload to Cloudinary instead of DB
+    // Upload images to Cloudinary and store URLs in database
     const uploadedImages = await Promise.all(
       images.map(async (image) => {
         try {
@@ -617,19 +617,18 @@ app.post("/api/reports", upload.array("images"), async (req, res) => {
             use_filename: true
           });
           
-          // Store Cloudinary URL in database instead of image data
+          // Store Cloudinary URL in database
           await db.query(
-            "INSERT INTO report_images (report_id, image_url) VALUES (?, ?)",
+            `INSERT INTO report_images (report_id, image_url) VALUES (?, ?)`,
             [reportId, cloudinaryResult.secure_url]
           );
-          
-          // Delete temporary file
+
+          // Delete temporary file after upload
           fs.unlinkSync(image.path);
-          
+
           return cloudinaryResult.secure_url;
         } catch (uploadError) {
           console.error("Failed to upload image:", uploadError);
-          // Still store the report even if image upload fails
           return null;
         }
       })
@@ -639,7 +638,7 @@ app.post("/api/reports", upload.array("images"), async (req, res) => {
       message: "Report created and images uploaded successfully!",
       imageUrls: uploadedImages.filter(url => url !== null)
     });
-    
+
   } catch (error) {
     console.error("Error creating report:", error);
     res.status(500).json({ 
@@ -648,6 +647,7 @@ app.post("/api/reports", upload.array("images"), async (req, res) => {
     });
   }
 });
+
 // GET user full name by ID
 app.get('/api/users/:id', (req, res) => {
   const { id } = req.params;
