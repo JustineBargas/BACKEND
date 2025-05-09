@@ -1,4 +1,3 @@
-
 // server.js (Node.js with Express)
 const express = require("express");
 const mysql = require("mysql2");
@@ -577,13 +576,23 @@ app.get('/api/admin/report-details', async (req, res) => {
   }
 });
 
-// AFTER
+// Report endpoints
+
+
 app.post("/api/reports", upload.array("images"), async (req, res) => {
   try {
     const { userId, latitude, longitude, description } = req.body;
     const images = req.files;
 
-    // insert report row
+    if (!userId || !latitude || !longitude || !description) {
+      return res.status(400).json({ message: "Missing required fields" });
+    }
+
+    if (!images || images.length === 0) {
+      return res.status(400).json({ message: "No images uploaded" });
+    }
+
+    // Insert report into database
     const [result] = await db.promise().query(
       `INSERT INTO reports (user, latitude, longitude, description, timestamp)
        VALUES (?, ?, ?, ?, NOW())`,
@@ -591,21 +600,42 @@ app.post("/api/reports", upload.array("images"), async (req, res) => {
     );
     const reportId = result.insertId;
 
-    // prepare the image‐insert promises
-    const inserts = (images || []).map((image) =>
-      db.promise().query(
-        "INSERT INTO report_images (report_id, image_path) VALUES (?, ?)",
-        [reportId, image.filename]
-      )
+    // Upload images to Cloudinary and store URLs in database
+    const uploadedImages = await Promise.all(
+      images.map(async (image) => {
+        try {
+          const cloudinaryResult = await cloudinary.uploader.upload(image.path, {
+            folder: "reports",
+            use_filename: true,
+          });
+
+          await db.promise().query(
+            `INSERT INTO report_images (report_id, image_url) VALUES (?, ?)`,
+            [reportId, cloudinaryResult.secure_url]
+          );
+
+          fs.unlinkSync(image.path);
+          return cloudinaryResult.secure_url;
+        } catch (uploadError) {
+          console.error("Failed to upload image:", uploadError);
+          return null;
+        }
+      })
     );
 
-    // NOW you can await them
-    await Promise.all(inserts);
+    const successfulUploads = uploadedImages.filter((url) => url !== null);
+    if (successfulUploads.length === 0) {
+      await db.promise().query(`DELETE FROM reports WHERE report_id = ?`, [reportId]);
+      return res.status(500).json({ message: "Failed to upload images" });
+    }
 
-    res.status(201).json({ message: "Report and images uploaded successfully!" });
-  } catch (err) {
-    console.error("Error creating report:", err);
-    res.status(500).json({ message: "Failed to create report" });
+    res.status(201).json({
+      message: "Report created and images uploaded successfully!",
+      imageUrls: successfulUploads,
+    });
+  } catch (error) {
+    console.error("Error creating report:", error);
+    res.status(500).json({ message: "Failed to create report", error: error.message });
   }
 });
 
