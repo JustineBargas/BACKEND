@@ -584,7 +584,7 @@ app.get('/api/admin/report-details', async (req, res) => {
   }
 });
 
-// AFTER
+// Report endpoints
 app.post("/api/reports", upload.array("images"), async (req, res) => {
   try {
     const { userId, latitude, longitude, description } = req.body;
@@ -648,9 +648,6 @@ app.post("/api/reports", upload.array("images"), async (req, res) => {
     });
   }
 });
-
-
-
 // GET user full name by ID
 app.get('/api/users/:id', (req, res) => {
   const { id } = req.params;
