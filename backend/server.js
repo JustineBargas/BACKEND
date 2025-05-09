@@ -542,18 +542,17 @@ app.get('/api/admin/participants-per-event', async (req, res) => {
 app.get('/api/admin/report-details', async (req, res) => {
   try {
     const [rows] = await db.promise().query(`
-      SELECT
-        r.report_id,
-        r.user,
-        u.fullName   AS full_name,
-        r.latitude,
-        r.longitude,
-        r.description,
-        r.timestamp,
-        ri.image_path
-      FROM reports r
-      LEFT JOIN users         u  ON u.user_id        = r.user
-      LEFT JOIN report_images ri ON ri.report_id     = r.report_id
+      SELECT 
+          r.report_id,
+          r.latitude,
+          r.longitude,
+          r.description,
+          r.timestamp,
+          ri.image_path
+        FROM reports r
+        LEFT JOIN report_images ri ON r.report_id = ri.report_id
+        WHERE r.user = ?
+        ORDER BY r.timestamp DESC
     `);
 
     // fold rows into one object per report_id
