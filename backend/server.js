@@ -741,7 +741,7 @@ app.get('/api/user/reports', (req, res) => {
       r.longitude,
       r.description,
       r.timestamp,
-      ri.image_path as image_url  // Make sure this is the Cloudinary URL
+      ri.image_path as image_url
     FROM reports r
     LEFT JOIN report_images ri ON r.report_id = ri.report_id
     WHERE r.user = ?
