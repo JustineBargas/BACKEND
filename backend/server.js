@@ -617,7 +617,7 @@ app.post("/api/reports", upload.array("images"), async (req, res) => {
           });
 
           await db.promise().query(
-            `INSERT INTO report_images (report_id, image_url) VALUES (?, ?)`,
+            `INSERT INTO report_images (report_id, image_path) VALUES (?, ?)`,
             [reportId, cloudinaryResult.secure_url]
           );
 
