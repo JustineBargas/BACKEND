@@ -99,12 +99,18 @@ app.post("/api/login", async (req, res) => {
       return res.status(401).json({ error: "User not found" });
     }
 
-    const passwordMatch = await bcrypt.compare(password, user[0].password);
+    const { user_id, role, status, password: hashedPassword } = user[0];
+
+    // Check if the user's status is "Pending"
+    if (status === "Pending") {
+      return res.status(403).json({ error: "Your account is not approved by the admin." });
+    }
+
+    const passwordMatch = await bcrypt.compare(password, hashedPassword);
     if (!passwordMatch) {
       return res.status(401).json({ error: "Invalid credentials" });
     }
 
-    const { user_id, role, status } = user[0];
     res.json({ success: true, user: { user_id, role, status } });
   } catch (error) {
     console.error("Login error:", error);
