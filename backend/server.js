@@ -458,23 +458,24 @@ app.post('/events/:eventId/join', async (req, res) => {
   }
 });
   
-  app.get('/events/:eventId/participants', async (req, res) => {
-    const { eventId } = req.params;
-    try {
-      const connection = await db.promise();
-      const [participants] = await connection.execute(
-        `SELECT u.user_id, u.name, u.email, ep.joined_at
-         FROM event_participants ep
-         JOIN users u ON ep.user_id = u.user_id
-         WHERE ep.event_id = ?`,
-        [eventId]
-      );
-      res.status(200).json({ participants });
-    } catch (error) {
-      console.error('Error fetching participants for event:', error);
-      res.status(500).json({ message: 'Failed to fetch participants for this event.' });
-    }
-  });
+app.get('/api/events/:eventId/participants', async (req, res) => {
+  const { eventId } = req.params;
+  try {
+    const connection = await db.promise();
+    const [participants] = await connection.execute(
+      `SELECT u.fullName, ep.joined_at
+       FROM event_participants ep
+       JOIN users u ON ep.user_id = u.user_id
+       WHERE ep.event_id = ?
+       ORDER BY ep.joined_at ASC`,
+      [eventId]
+    );
+    res.status(200).json({ participants });
+  } catch (error) {
+    console.error('Error fetching participants for event:', error);
+    res.status(500).json({ message: 'Failed to fetch participants for this event.' });
+  }
+});
 
 // Endpoint to update user status (e.g., Approve or reject)
 app.put('/api/admin/users/:userId', async (req, res) => {
