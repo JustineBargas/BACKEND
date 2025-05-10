@@ -545,8 +545,6 @@ app.get('/api/admin/report-details', async (req, res) => {
     const [rows] = await db.promise().query(`
       SELECT 
           r.report_id,
-          r.user,
-          r.full_name,
           r.latitude,
           r.longitude,
           r.description,
@@ -557,7 +555,6 @@ app.get('/api/admin/report-details', async (req, res) => {
         WHERE r.user = ?
         ORDER BY r.timestamp DESC
     `);
-
     // fold rows into one object per report_id
     const reports = rows.reduce((acc, r) => {
       if (!acc[r.report_id]) {
