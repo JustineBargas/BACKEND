@@ -545,6 +545,8 @@ app.get('/api/admin/report-details', async (req, res) => {
     const [rows] = await db.promise().query(`
       SELECT 
           r.report_id,
+          r.user,
+          r.full_name,
           r.latitude,
           r.longitude,
           r.description,
